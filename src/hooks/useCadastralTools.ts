@@ -9,7 +9,9 @@ export const useCadastralTools = () => {
     cadastralData, 
     h3Resolution, 
     setH3Data, 
-    h3Data 
+    h3Data,
+    arbitrageThreshold,
+    setArbitrageData
   } = useCadastralStore();
   
   const { runAnalysis, isAnalyzing } = useAnalysisStore();
@@ -79,6 +81,48 @@ export const useCadastralTools = () => {
     setH3Data(results);
   }, [cadastralData, h3Resolution, setH3Data]);
 
+  const computeArbitrage = useCallback(() => {
+    if (cadastralData.length === 0 || h3Data.length === 0) {
+      alert("Please load cadastral data and compute price grid first.");
+      return;
+    }
+
+    console.log(`Finding deals with ${arbitrageThreshold}% discount...`);
+
+    // Create a lookup for H3 cell prices
+    const priceMap = new Map<string, number>();
+    h3Data.forEach(d => {
+      priceMap.set(d.hex, d.averagePricePerSqm);
+    });
+
+    const deals = cadastralData.filter(item => {
+      // Basic validation
+      if (!item.latitude || !item.longitude || !item.valeur_fonciere || !item.surface_build || item.surface_build < 10) {
+        return false;
+      }
+      
+      const itemPriceSqm = item.valeur_fonciere / item.surface_build;
+      
+      try {
+        const hex = latLngToCell(item.latitude, item.longitude, h3Resolution);
+        const avgPrice = priceMap.get(hex);
+        
+        if (!avgPrice) return false;
+
+        // Arbitrage Logic: Price is X% below average
+        const thresholdPrice = avgPrice * (1 - (arbitrageThreshold / 100));
+        
+        return itemPriceSqm <= thresholdPrice;
+      } catch (err) {
+        return false;
+      }
+    });
+
+    console.log(`Found ${deals.length} deals.`);
+    setArbitrageData(deals);
+
+  }, [cadastralData, h3Data, h3Resolution, arbitrageThreshold, setArbitrageData]);
+
   const executeAnalysis = useCallback(() => {
      if (h3Data.length === 0 || isochroneLayers.length === 0) {
       alert("Please ensure you have both H3 Price Grid and Isochrones loaded.");
@@ -103,6 +147,7 @@ export const useCadastralTools = () => {
 
   return {
     aggregateH3,
+    computeArbitrage,
     executeAnalysis,
     isAnalyzing
   };

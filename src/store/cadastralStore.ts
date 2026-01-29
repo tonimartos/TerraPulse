@@ -23,6 +23,14 @@ interface CadastralState {
   setH3Resolution: (res: number) => void;
   isH3Visible: boolean;
   toggleH3Visibility: () => void;
+
+  // Arbitrage State
+  arbitrageData: CadastralData[];
+  setArbitrageData: (data: CadastralData[]) => void;
+  arbitrageThreshold: number; // Percentage under market price
+  setArbitrageThreshold: (threshold: number) => void;
+  isArbitrageVisible: boolean;
+  toggleArbitrageVisibility: () => void;
 }
 
 const useCadastralStore = create<CadastralState>((set) => ({
@@ -37,6 +45,13 @@ const useCadastralStore = create<CadastralState>((set) => ({
   setH3Resolution: (res) => set({ h3Resolution: res }),
   isH3Visible: true,
   toggleH3Visibility: () => set((state) => ({ isH3Visible: !state.isH3Visible })),
+
+  arbitrageData: [],
+  setArbitrageData: (data) => set({ arbitrageData: data }),
+  arbitrageThreshold: 20,
+  setArbitrageThreshold: (threshold) => set({ arbitrageThreshold: threshold }),
+  isArbitrageVisible: true,
+  toggleArbitrageVisibility: () => set((state) => ({ isArbitrageVisible: !state.isArbitrageVisible })),
 }));
 
 export default useCadastralStore;

@@ -9,7 +9,12 @@ const ToolsControl = () => {
     cadastralData, 
     h3Resolution, 
     setH3Resolution, 
-    h3Data
+    h3Data,
+    isH3Visible,
+    toggleH3Visibility,
+    arbitrageThreshold,
+    setArbitrageThreshold,
+    arbitrageData
   } = useCadastralStore();
   
   const { layers: isochroneLayers } = useIsochroneStore();
@@ -20,14 +25,22 @@ const ToolsControl = () => {
     setWeights 
   } = useAnalysisStore();
 
-  const { aggregateH3, executeAnalysis, isAnalyzing } = useCadastralTools();
+  const { aggregateH3, executeAnalysis, computeArbitrage, isAnalyzing } = useCadastralTools();
 
   const handleAggregateH3 = () => {
-    aggregateH3();
+    if (h3Data.length > 0) {
+      toggleH3Visibility();
+    } else {
+      aggregateH3();
+    }
   };
 
   const handleRunAnalysis = () => {
     executeAnalysis();
+  };
+
+  const handleComputeArbitrage = () => {
+    computeArbitrage();
   };
 
   return (
@@ -62,11 +75,13 @@ const ToolsControl = () => {
           disabled={cadastralData.length === 0}
           className={`w-full font-bold py-2 px-4 rounded mb-2 ${
             cadastralData.length > 0 
-              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+              ? (h3Data.length > 0 && !isH3Visible ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white')
               : 'bg-gray-600 text-gray-400 cursor-not-allowed'
           }`}
         >
-          Compute Price Grid
+          {h3Data.length > 0 
+            ? (isH3Visible ? 'Hide Price Grid' : 'Show Price Grid') 
+            : 'Compute Price Grid'}
         </button>
 
         {h3Data.length > 0 && (
@@ -74,6 +89,46 @@ const ToolsControl = () => {
              <div className="flex items-center justify-between mb-2">
                 <span>{h3Data.length} cells generated</span>
              </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-green-500/30">
+        <h4 className="text-md font-semibold mb-2 text-green-400">Arbitrage / Deals</h4>
+        <p className="text-xs text-gray-400 mb-4">
+          Find properties priced below market average.
+        </p>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-400 mb-1">
+            Discount Threshold: {arbitrageThreshold}%
+          </label>
+          <input
+            type="range"
+            min="5"
+            max="50"
+            step="5"
+            value={arbitrageThreshold}
+            onChange={(e) => setArbitrageThreshold(parseInt(e.target.value))}
+            className="w-full h-2 bg-gradient-to-r from-green-500 to-yellow-500 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
+
+        <button
+          onClick={handleComputeArbitrage}
+          disabled={h3Data.length === 0}
+          className={`w-full font-bold py-2 px-4 rounded mb-2 ${
+            h3Data.length > 0 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          Find Deals
+        </button>
+
+        {arbitrageData.length > 0 && (
+          <div className="mt-2 text-xs text-green-400 text-center">
+             Found {arbitrageData.length} potential deals!
           </div>
         )}
       </div>

@@ -67,14 +67,21 @@ const MapComponent: React.FC = () => {
       );
     }
     
-    // Handle Cadastral Data
+    // Handle Arbitrage / Deals specifically
     if (object.valeur_fonciere !== undefined) {
       return (
-        <div style={{ position: 'absolute', left: x + 10, top: y + 10, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '10px', borderRadius: '4px', zIndex: 10, pointerEvents: 'none' }}>
-           <div className="font-bold mb-1">{object.type_local || 'Propriété'}</div>
+        <div style={{ position: 'absolute', left: x + 10, top: y + 10, background: 'rgba(0,0,0,0.9)', color: 'white', padding: '10px', borderRadius: '4px', zIndex: 10, pointerEvents: 'none', border: '1px solid #444' }}>
+           <div className="font-bold mb-1 flex justify-between">
+              <span>{object.type_local || 'Propriété'}</span>
+           </div>
            <div>Prix: {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(object.valeur_fonciere)}</div>
            <div>Date: {object.date_mutation}</div>
            <div>Surface: {object.surface_reelle_bati} m²</div>
+           {object.surface_build > 0 && (
+             <div className="text-yellow-400 font-bold">
+               {(object.valeur_fonciere / object.surface_build).toFixed(0)} €/m²
+             </div>
+           )}
            {object.code_commune && <div>Commune: {object.code_commune}</div>}
         </div>
       );

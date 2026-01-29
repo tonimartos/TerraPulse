@@ -24,7 +24,9 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     cadastralData, 
     isVisible: isCadastralVisible,
     isH3Visible,
-    h3Data 
+    h3Data,
+    arbitrageData,
+    isArbitrageVisible
   } = useCadastralStore();
 
   // Analysis Store
@@ -231,6 +233,28 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
        );
     }
 
+    // 5. Arbitrage Layer (Deals) - Rendered LAST to be on top
+    if (isArbitrageVisible && arbitrageData.length > 0) {
+      deckLayers.push(
+        new ScatterplotLayer({
+          id: 'arbitrage-points-layer',
+          data: arbitrageData,
+          getPosition: (d: any) => [
+            d.longitude || d.geometry.coordinates[0],
+            d.latitude || d.geometry.coordinates[1],
+          ],
+          getFillColor: [0, 255, 0, 255], // Bright Green
+          getRadius: 30,
+          radiusMinPixels: 4,
+          stroked: true,
+          getLineColor: [0, 0, 0],
+          getLineWidth: 2,
+          pickable: true,
+          onHover: (info: any) => setTooltip(info),
+        })
+      );
+    }
+
     return deckLayers;
   }, [
     layers,
@@ -243,6 +267,8 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     isH3Visible,
     analysisResults,
     h3Data, // Added dependency
+    arbitrageData,
+    isArbitrageVisible,
     setTooltip,
   ]);
 
