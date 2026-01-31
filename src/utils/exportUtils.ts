@@ -1,5 +1,5 @@
 import { featureCollection } from '@turf/helpers';
-import { Feature, Polygon, MultiPolygon } from 'geojson';
+import { Feature } from 'geojson';
 
 /**
  * Downloads a GeoJSON FeatureCollection as a file in the browser.
