@@ -22,10 +22,11 @@ const ToolsControl = () => {
     analysisResults, 
     priceWeight, 
     timeWeight, 
-    setWeights 
+    setWeights,
+    reportData
   } = useAnalysisStore();
 
-  const { aggregateH3, executeAnalysis, computeArbitrage, isAnalyzing } = useCadastralTools();
+  const { aggregateH3, executeAnalysis, computeArbitrage, generateReport, isAnalyzing } = useCadastralTools();
 
   const handleAggregateH3 = () => {
     if (h3Data.length > 0) {
@@ -43,14 +44,17 @@ const ToolsControl = () => {
     computeArbitrage();
   };
 
+  const handleGenerateReport = () => {
+    generateReport();
+  };
+
   return (
     <div className="p-4 text-white">
       <h3 className="text-lg font-bold mb-4">Tools</h3>
 
       {isochroneLayers.length <= 1 && (
         <div className="mb-4 p-3 bg-blue-900/50 border border-blue-700 rounded text-xs text-blue-200">
-           <strong>Tip:</strong> You currently have {isochroneLayers.length} isochrone layer. 
-           For better analysis, add multiple layers (e.g., 15min, 30min) to see the trade-off.
+           <strong>Tip:</strong> for better analysis (and reports), add multiple isochrone layers (e.g. 10, 20, 30 min).
         </div>
       )}
 
@@ -129,6 +133,51 @@ const ToolsControl = () => {
         {arbitrageData.length > 0 && (
           <div className="mt-2 text-xs text-green-400 text-center">
              Found {arbitrageData.length} potential deals!
+          </div>
+        )}
+      </div>
+
+       <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-yellow-500/30">
+        <h4 className="text-md font-semibold mb-2 text-yellow-400">Market Report</h4>
+        <p className="text-xs text-gray-400 mb-4">
+          Analyze price trends vs connectivity.
+        </p>
+
+        <button
+          onClick={handleGenerateReport}
+          disabled={h3Data.length === 0 || isochroneLayers.length === 0}
+          className={`w-full font-bold py-2 px-4 rounded mb-2 ${
+            h3Data.length > 0 && isochroneLayers.length > 0
+              ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          Generate Report
+        </button>
+        
+        {reportData && reportData.length > 0 && (
+          <div className="mt-4 bg-black/30 p-2 rounded text-xs">
+             <table className="w-full text-left">
+               <thead>
+                 <tr className="border-b border-gray-600 text-gray-400">
+                   <th className="pb-1">Time Zone</th>
+                   <th className="pb-1 text-right">Avg Price/m²</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {reportData.map((row, idx) => (
+                   <tr key={idx} className="border-b border-gray-700/50">
+                     <td className="py-1">{row.timeRange}</td>
+                     <td className="py-1 text-right font-mono text-yellow-200">
+                       {row.avgPricePerSqm.toLocaleString()} €
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+             <div className="mt-2 text-gray-400 italic text-[10px]">
+               Based on {reportData.reduce((acc, r) => acc + r.cellCount, 0)} H3 cells
+             </div>
           </div>
         )}
       </div>

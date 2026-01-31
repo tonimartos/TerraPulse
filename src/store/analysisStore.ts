@@ -12,6 +12,14 @@ export interface ScoredH3Cell extends H3PriceData {
   totalScore: number; // Lower is better (Sweet Spot)
 }
 
+export interface CorrelationData {
+  timeRange: string;
+  avgPricePerSqm: number;
+  cellCount: number;
+  minPrice: number;
+  maxPrice: number;
+}
+
 interface AnalysisState {
   analysisResults: ScoredH3Cell[];
   isAnalyzing: boolean;
@@ -20,6 +28,9 @@ interface AnalysisState {
   priceWeight: number; // 0 to 1
   timeWeight: number; // 0 to 1
   
+  reportData: CorrelationData[];
+  setReportData: (data: CorrelationData[]) => void;
+
   setWeights: (price: number, time: number) => void;
   runAnalysis: (
     h3Data: H3PriceData[], 
@@ -33,10 +44,12 @@ const useAnalysisStore = create<AnalysisState>((set, get) => ({
   isAnalyzing: false,
   priceWeight: 0.5,
   timeWeight: 0.5,
+  reportData: [],
 
   setWeights: (price, time) => set({ priceWeight: price, timeWeight: time }),
 
   clearAnalysis: () => set({ analysisResults: [] }),
+  setReportData: (data) => set({ reportData: data }),
 
   runAnalysis: (h3Data, isochrones) => {
     if (!h3Data.length || !isochrones.length) {

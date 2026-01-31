@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { latLngToCell } from 'h3-js';
+import { latLngToCell, polygonToCells } from 'h3-js';
 import useCadastralStore, { H3PriceData } from '../store/cadastralStore';
-import useAnalysisStore from '../store/analysisStore';
+import useAnalysisStore, { CorrelationData } from '../store/analysisStore';
 import useIsochroneStore from '../store/isochroneStore';
 
 export const useCadastralTools = () => {
@@ -14,7 +14,7 @@ export const useCadastralTools = () => {
     setArbitrageData
   } = useCadastralStore();
   
-  const { runAnalysis, isAnalyzing } = useAnalysisStore();
+  const { runAnalysis, isAnalyzing, setReportData } = useAnalysisStore();
   const { layers: isochroneLayers } = useIsochroneStore();
 
   const aggregateH3 = useCallback(() => {
@@ -123,6 +123,110 @@ export const useCadastralTools = () => {
 
   }, [cadastralData, h3Data, h3Resolution, arbitrageThreshold, setArbitrageData]);
 
+  const generateReport = useCallback(() => {
+    if (h3Data.length === 0 || isochroneLayers.length === 0) {
+      alert("Please ensure you have both H3 Price Grid and Isochrones loaded.");
+      return;
+    }
+
+    console.log("Generating Market Report...");
+
+    // 1. Map each H3 cell to its minimum travel time
+    const cellMinTime = new Map<string, number>();
+    
+    // We must recalculate the cells for each isochrone using the CURRENT h3Resolution.
+    // The stored layer.h3Cells might be at a different resolution (e.g. 9) or might have coordinate issues.
+    isochroneLayers.forEach(layer => {
+      const geojson = layer.geojson;
+      if (!geojson || !geojson.geometry) return;
+
+      const type = geojson.geometry.type;
+      const coords = geojson.geometry.coordinates;
+      
+      const distinctPolygons: number[][][] = []; // Array of outer rings
+
+      if (type === 'Polygon') {
+        if (coords.length > 0) distinctPolygons.push(coords[0] as unknown as number[][]);
+      } else if (type === 'MultiPolygon') {
+        (coords as unknown as number[][][][]).forEach(poly => {
+          if (poly.length > 0) distinctPolygons.push(poly[0]);
+        });
+      }
+
+      distinctPolygons.forEach(ring => {
+        try {
+          // IMPORTANT: passing true for isGeoJson because DeckGL/Mapbox uses [lng, lat]
+          // and we want to match the resolution used for the price grid.
+          const cells = polygonToCells(ring, h3Resolution, true);
+          
+          cells.forEach(hex => {
+             const currentMin = cellMinTime.get(hex);
+             if (currentMin === undefined || layer.travelTime < currentMin) {
+               cellMinTime.set(hex, layer.travelTime);
+             }
+          });
+        } catch (e) {
+          console.warn("Error processing isochrone geometry for H3", e);
+        }
+      });
+    });
+
+    // 2. bucket the data
+    // We want discrete buckets inferred from the available isochrone times
+    // e.g. [15, 30, 45, 60] -> Buckets: "0-15", "15-30", "30-45", "45-60", "60+" (if any)
+    
+    const uniqueTimes = Array.from(new Set(isochroneLayers.map(l => l.travelTime))).sort((a,b) => a-b);
+    
+    // Create buckets
+    const buckets: Record<string, { total: number; count: number; min: number; max: number }> = {};
+    
+    // Helper to get bucket label
+    const getBucket = (time: number) => {
+      // Find the specific time in uniqueTimes
+      const idx = uniqueTimes.indexOf(time);
+      if (idx === 0) return `0 - ${time} min`;
+      return `${uniqueTimes[idx-1]} - ${time} min`;
+    };
+
+    h3Data.forEach(cell => {
+      const time = cellMinTime.get(cell.hex);
+      if (time !== undefined) {
+        const bucketName = getBucket(time);
+        
+        if (!buckets[bucketName]) {
+          buckets[bucketName] = { total: 0, count: 0, min: Infinity, max: -Infinity };
+        }
+        
+        const price = cell.averagePricePerSqm;
+        if (price > 0) {
+            buckets[bucketName].total += price;
+            buckets[bucketName].count += 1;
+            buckets[bucketName].min = Math.min(buckets[bucketName].min, price);
+            buckets[bucketName].max = Math.max(buckets[bucketName].max, price);
+        }
+      }
+    });
+
+    // 3. Format results
+    const report: CorrelationData[] = Object.entries(buckets).map(([range, stats]) => ({
+      timeRange: range,
+      avgPricePerSqm: Math.round(stats.total / stats.count),
+      cellCount: stats.count,
+      minPrice: stats.min,
+      maxPrice: stats.max
+    }));
+
+    // Sort report by time range (extract the first number for sorting)
+    report.sort((a, b) => {
+         const getStart = (s: string) => parseInt(s.split('-')[0].trim());
+         return getStart(a.timeRange) - getStart(b.timeRange);
+    });
+
+    console.log("Report generated:", report);
+    setReportData(report);
+
+  }, [h3Data, isochroneLayers, setReportData]);
+
   const executeAnalysis = useCallback(() => {
      if (h3Data.length === 0 || isochroneLayers.length === 0) {
       alert("Please ensure you have both H3 Price Grid and Isochrones loaded.");
@@ -149,6 +253,7 @@ export const useCadastralTools = () => {
     aggregateH3,
     computeArbitrage,
     executeAnalysis,
+    generateReport,
     isAnalyzing
   };
 };
