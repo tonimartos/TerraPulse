@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { parseCadastralCSV, filterCadastralData, parseLocalCadastralCSV, fetchCadastralGeoJSON } from '../api/cadastralService';
+import { parseCadastralCSV, parseLocalCadastralCSV, fetchCadastralGeoJSON, parseLocalCadastralGeoJSON } from '../api/cadastralService';
 import useCadastralStore from '../store/cadastralStore';
 import { useCadastralTools } from '../hooks/useCadastralTools';
 import { ChevronDown, ChevronRight, Database, Grid, Layers } from 'lucide-react';
@@ -13,6 +13,7 @@ interface SourceFile {
 
 const CadastralControl = () => {
   const [availableRemoteFiles] = useState<SourceFile[]>([
+    { name: 'Swiss Listings (Vaud)', path: '/cadastral/vaud-listing-31012026.geojson', type: 'server' },
     { name: 'Mutations Lyon 2024 (Polygons)', path: '/cadastral/lyon_city_polygons.geojson', type: 'server' },
     { name: 'Mutations Lyon 2024 (Points)', path: '/cadastral/lyon_mutations.geojson', type: 'server' }
   ]);
@@ -68,24 +69,23 @@ const CadastralControl = () => {
              data = await parseCadastralCSV(file.path);
           }
         } else if (file.type === 'local' && file.fileObject) {
-          data = await parseLocalCadastralCSV(file.fileObject);
+           if (file.name.endsWith('.geojson') || file.name.endsWith('.json')) {
+              data = await parseLocalCadastralGeoJSON(file.fileObject);
+           } else {
+              data = await parseLocalCadastralCSV(file.fileObject);
+           }
         }
 
         console.log(`Parsed ${data.length} rows from ${file.name}`);
 
-        // Specific logic for French Values Foncieres
-        // Filter for Lyon (69)
-        // GeoJSON from server is already filtered, but local CSV might need it.
-        // We can just try to filter if code_departement exists.
+        // We load whatever data we parsed.
+        // Removed hardcoded filtering for Department 69 to allow generic data loading (e.g. Swiss listings).
         
-        const lyonData = filterCadastralData(data, '69');
-        console.log(`Filtered ${lyonData.length} entries for Lyon (Dept 69) from ${file.name}`);
-        
-        if (lyonData.length > 0) {
-          console.log('Sample entry:', lyonData[0]);
-          setCadastralData(lyonData);
+        if (data.length > 0) {
+          console.log('Sample entry:', data[0]);
+          setCadastralData(data);
         } else {
-          console.warn('No data found for Dept 69 in this file.');
+          console.warn('No data found in this file.');
         }
 
         // TODO: Store or map this data. For now, we stop here as requested.

@@ -9,9 +9,9 @@ import useMapLayers from '../hooks/useMapLayers';
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const INITIAL_VIEW_STATE = {
-  longitude: 4.8357,
-  latitude: 45.7640,
-  zoom: 12,
+  longitude: 6.6323,
+  latitude: 46.5197,
+  zoom: 13,
   pitch: 45,
   bearing: 0,
 };
