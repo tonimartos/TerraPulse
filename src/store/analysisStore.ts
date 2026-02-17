@@ -63,9 +63,18 @@ const useAnalysisStore = create<AnalysisState>((set, get) => ({
     setTimeout(() => {
       try {
         const { priceWeight, timeWeight } = get();
+
+        // Filter out any 0-price cells just in case h3Data still has them (though hook should prevent it)
+        const validCells = h3Data.filter(d => d.averagePricePerSqm > 0);
         
+        if (validCells.length === 0) {
+           console.warn("No valid price data for analysis");
+           set({ isAnalyzing: false });
+           return;
+        }
+
         // 1. Find percentiles for robust price normalization (Linear scale is killed by outliers)
-        const prices = h3Data.map(d => d.averagePricePerSqm).sort((a, b) => a - b);
+        const prices = validCells.map(d => d.averagePricePerSqm).sort((a, b) => a - b);
         const p5 = prices[Math.floor(prices.length * 0.05)] || prices[0];
         const p95 = prices[Math.floor(prices.length * 0.95)] || prices[prices.length - 1];
         const priceRange = p95 - p5 || 1;
@@ -90,7 +99,11 @@ const useAnalysisStore = create<AnalysisState>((set, get) => ({
         // Pre-calculate centers to avoid re-calc
         // Using simple point-in-polygon
         
+
         h3Data.forEach(cell => {
+           // Skip cells with invalid price
+           if (!cell.averagePricePerSqm || cell.averagePricePerSqm <= 0) return;
+
            const [lat, lng] = cellToLatLng(cell.hex);
            const pt = point([lng, lat]); // GeoJSON is Lng, Lat
            

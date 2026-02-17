@@ -33,6 +33,7 @@ export const useCadastralTools = () => {
       const price = item.valeur_fonciere;
       const surface = item.surface_build; 
 
+      // Specifically ignore listings with 0 price to avoid skewing data
       if (lat === undefined || lon === undefined || !price || price <= 0) {
          return;
       }
@@ -67,6 +68,9 @@ export const useCadastralTools = () => {
       // Avoid division by zero
       const avgPrice = val.count > 0 ? Math.round(val.totalPrice / val.count) : 0;
       const avgPricePerSqm = val.sqmCount > 0 ? Math.round(val.totalSqmPrice / val.sqmCount) : 0;
+
+      // Ignore cells with 0 price per sqm to avoid skewing analysis (treating 0 as cheap)
+      if (avgPricePerSqm <= 0) return;
 
       results.push({
         hex: key,
