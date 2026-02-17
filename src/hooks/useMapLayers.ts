@@ -15,6 +15,8 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     layers,
     poiData,
     showPublicTransport,
+    showRail,
+    showBus,
     showBikeParking,
     setSelectedPoi,
   } = useIsochroneStore();
@@ -62,40 +64,75 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     });
 
     // 2. POI Layers (Public Transport & Bike Parking)
-    if (poiData) {
-      const publicTransportData = showPublicTransport
-        ? poiData.features.filter(
-            (f) =>
-              f.properties?.public_transport === 'station' ||
-              f.properties?.public_transport === 'platform' ||
-              f.properties?.highway === 'bus_stop'
-          )
-        : [];
+    if (poiData && showPublicTransport) {
+      // Rail POIs
+      const railData = showRail ? poiData.features.filter(
+        (f) =>
+          f.properties?.train === 'yes' ||
+          f.properties?.railway === 'station' ||
+          f.properties?.railway === 'halt' ||
+          f.properties?.public_transport === 'station'
+      ) : [];
 
-      const bikeParkingData = showBikeParking
-        ? poiData.features.filter((f) => f.properties?.amenity === 'bicycle_parking')
-        : [];
+      // Bus POIs
+      const busData = showBus ? poiData.features.filter(
+        (f) =>
+          (f.properties?.bus === 'yes' ||
+           f.properties?.highway === 'bus_stop' ||
+           f.properties?.public_transport === 'stop_position' || 
+           f.properties?.public_transport === 'platform') && // Broaden to include platform if not rail
+           // Exclude if it's already considered rail
+           !(f.properties?.train === 'yes' || f.properties?.railway === 'station' || f.properties?.railway === 'halt' || f.properties?.public_transport === 'station')
+      ) : [];
 
-      if (publicTransportData.length > 0) {
+      // Add Rail Layer
+      if (railData.length > 0) {
         deckLayers.push(
           new IconLayer({
-            id: 'public-transport-layer',
-            data: publicTransportData,
+            id: 'public-transport-rail-layer',
+            data: railData,
             iconAtlas: '/train.svg',
             iconMapping: {
-              marker: { x: 0, y: 0, width: 128, height: 128, mask: true },
+              marker: { x: 0, y: 0, width: 24, height: 24, mask: true },
             },
             getIcon: () => 'marker',
             sizeScale: 15,
-            getPosition: (d: Feature<GeoJSON.Point>) => d.geometry.coordinates as [number, number],
-            getSize: 5,
-            getColor: [255, 140, 0],
+            getPosition: (d: Feature<GeoJSON.Point>) => (d.geometry as any).coordinates,
+            getSize: 1.5,
+            getColor: [230, 25, 75], // Red for rail
             pickable: true,
             onClick: ({ object }: { object: any }) => setSelectedPoi(object as Feature),
             onHover: (info: any) => setTooltip(info),
           })
         );
       }
+
+      // Add Bus Layer
+      if (busData.length > 0) {
+        deckLayers.push(
+          new IconLayer({
+            id: 'public-transport-bus-layer',
+            data: busData,
+            iconAtlas: '/bus.svg',
+            iconMapping: {
+              marker: { x: 0, y: 0, width: 24, height: 24, mask: true },
+            },
+            getIcon: () => 'marker',
+            sizeScale: 15,
+            getPosition: (d: Feature<GeoJSON.Point>) => (d.geometry as any).coordinates,
+            getSize: 1.5, // Slightly smaller than rail
+            getColor: [60, 180, 75], // Green for bus
+            pickable: true,
+            onClick: ({ object }: { object: any }) => setSelectedPoi(object as Feature),
+            onHover: (info: any) => setTooltip(info),
+          })
+        );
+      }
+    }
+
+    // Bike Parking
+    if (poiData && showBikeParking) {
+      const bikeParkingData = poiData.features.filter((f) => f.properties?.amenity === 'bicycle_parking');
 
       if (bikeParkingData.length > 0) {
         deckLayers.push(
@@ -104,13 +141,13 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
             data: bikeParkingData,
             iconAtlas: '/bike.svg',
             iconMapping: {
-              marker: { x: 0, y: 0, width: 128, height: 128, mask: true },
+              marker: { x: 0, y: 0, width: 24, height: 24, mask: true },
             },
             getIcon: () => 'marker',
             sizeScale: 15,
             getPosition: (d: Feature<GeoJSON.Point>) => d.geometry.coordinates as [number, number],
             getSize: 5,
-            getColor: [0, 128, 255],
+            getColor: [0, 130, 200], // Blue for bike
             pickable: true,
             onClick: ({ object }: { object: any }) => setSelectedPoi(object as Feature),
             onHover: (info: any) => setTooltip(info),
@@ -260,6 +297,8 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     layers,
     poiData,
     showPublicTransport,
+    showRail,
+    showBus,
     showBikeParking,
     setSelectedPoi,
     cadastralData,
@@ -270,6 +309,8 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     arbitrageData,
     isArbitrageVisible,
     setTooltip,
+    showRail, 
+    showBus,
   ]);
 
   return mapLayers;

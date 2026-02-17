@@ -4,7 +4,11 @@ import useStore from '../store/isochroneStore';
 const PoiControl: React.FC = () => {
   const {
     showPublicTransport,
+    showRail,
+    showBus,
     togglePublicTransport,
+    toggleRail,
+    toggleBus,
     showBikeParking,
     toggleBikeParking,
     loadPois,
@@ -17,6 +21,16 @@ const PoiControl: React.FC = () => {
       await loadPois();
     }
     togglePublicTransport();
+  };
+
+  const handleRailToggle = async () => {
+    if (!poiData) await loadPois();
+    toggleRail();
+  };
+  
+  const handleBusToggle = async () => {
+    if (!poiData) await loadPois();
+    toggleBus();
   };
 
   const handleBikeParkingToggle = async () => {
@@ -65,6 +79,32 @@ const PoiControl: React.FC = () => {
             />
             <label htmlFor="public-transport">Public Transport</label>
           </div>
+          
+          {showPublicTransport && (
+            <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px' }}>
+                <input
+                  type="checkbox"
+                  id="pt-rail"
+                  checked={showRail}
+                  onChange={handleRailToggle}
+                  style={{ marginRight: '10px' }}
+                />
+                <label htmlFor="pt-rail">Rail</label>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  id="pt-bus"
+                  checked={showBus}
+                  onChange={handleBusToggle}
+                  style={{ marginRight: '10px' }}
+                />
+                <label htmlFor="pt-bus">Bus</label>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <input
               type="checkbox"
