@@ -119,7 +119,7 @@ const useStore = create<AppState>()(
         })),
       loadPois: async () => {
         try {
-          const poiFiles = ['vaud-pois.geojson', 'lyon-pois.geojson'];
+          const poiFiles = ['switzerland-pois.geojson', 'lyon-pois.geojson'];
           const features: GeoJSON.Feature[] = [];
 
           await Promise.all(poiFiles.map(async (file) => {

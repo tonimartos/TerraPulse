@@ -66,24 +66,27 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     // 2. POI Layers (Public Transport & Bike Parking)
     if (poiData && showPublicTransport) {
       // Rail POIs
-      const railData = showRail ? poiData.features.filter(
-        (f) =>
-          f.properties?.train === 'yes' ||
-          f.properties?.railway === 'station' ||
-          f.properties?.railway === 'halt' ||
-          f.properties?.public_transport === 'station'
-      ) : [];
+      const isRail = (f: any) => {
+          const p = f.properties || {};
+          // New simplified format check
+          if (p.type === 'rail') return true;
+          // Legacy check
+          return p.train === 'yes' || p.railway === 'station' || p.railway === 'halt' || p.public_transport === 'station';
+      };
+
+      const railData = showRail ? poiData.features.filter(isRail) : [];
 
       // Bus POIs
-      const busData = showBus ? poiData.features.filter(
-        (f) =>
-          (f.properties?.bus === 'yes' ||
-           f.properties?.highway === 'bus_stop' ||
-           f.properties?.public_transport === 'stop_position' || 
-           f.properties?.public_transport === 'platform') && // Broaden to include platform if not rail
-           // Exclude if it's already considered rail
-           !(f.properties?.train === 'yes' || f.properties?.railway === 'station' || f.properties?.railway === 'halt' || f.properties?.public_transport === 'station')
-      ) : [];
+      const isBus = (f: any) => {
+          const p = f.properties || {};
+          if (isRail(f)) return false; 
+          // New simplified format check
+          if (p.type === 'bus') return true;
+          // Legacy check
+          return (p.bus === 'yes' || p.highway === 'bus_stop' || p.public_transport === 'stop_position');
+      }
+
+      const busData = showBus ? poiData.features.filter(isBus) : [];
 
       // Add Rail Layer
       if (railData.length > 0) {
