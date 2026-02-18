@@ -1,6 +1,6 @@
 import React from 'react';
 import useStore, { TransportMode } from '../store/isochroneStore';
-import { Download, Bike, Car, Footprints, Trash2, MapPin } from 'lucide-react';
+ import { Download, Bike, Car, Footprints, Trash2, Sparkles } from 'lucide-react';
 import { downloadGeoJSON } from '../utils/exportUtils';
 
 const IsochroneControl: React.FC = () => {
@@ -8,6 +8,7 @@ const IsochroneControl: React.FC = () => {
     layers,
     isSelecting,
     startSelection,
+    stopSelection,
     toggleLayerVisibility,
     deleteLayer,
     currentTransportMode,
@@ -15,6 +16,9 @@ const IsochroneControl: React.FC = () => {
     currentTravelTime,
     setTravelTime,
     poisInIsochrones,
+    intersectionLayer,
+    calculateMeetingPoint,
+    clearMeetingPoint
   } = useStore();
 
   const transportModes: { id: TransportMode; label: string; icon: React.ReactNode }[] = [
@@ -58,80 +62,102 @@ const IsochroneControl: React.FC = () => {
 
 
   return (
-    <div className="space-y-6 p-4">
-      {/* Configuration Section */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-           <MapPin size={16} /> New Isochrone
-        </h2>
-        
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            {transportModes.map((mode) => (
-              <button
-                key={mode.id}
-                onClick={() => setTransportMode(mode.id)}
-                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${
-                  currentTransportMode === mode.id
-                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
-                    : 'bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-                }`}
-              >
-                {mode.icon}
-                <span className="text-xs mt-1 font-medium">{mode.label}</span>
-              </button>
-            ))}
-          </div>
+    <div className="relative w-full p-4 font-sans text-gray-100">
+      <h2 className="text-xl font-bold mb-4 text-white">Isochrone Analysis</h2>
 
-          <div>
-            <label className="flex justify-between text-xs text-gray-400 mb-2">
-                <span>Travel Time</span>
-                <span className="text-white font-mono">{currentTravelTime} min</span>
-            </label>
-            <input
-              type="range"
-              min="5"
-              max="60"
-              step="5"
-              value={currentTravelTime}
-              onChange={(e) => setTravelTime(Number(e.target.value))}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-                <span>5m</span>
-                <span>30m</span>
-                <span>60m</span>
-            </div>
-          </div>
-
-          <button
-            onClick={startSelection}
-            disabled={isSelecting}
-            className={`w-full py-3 px-4 rounded-lg font-bold text-sm transition-all shadow-lg flex items-center justify-center gap-2 ${
-                isSelecting 
-                    ? 'bg-orange-500 animate-pulse cursor-crosshair' 
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500'
-            }`}
-          >
-            {isSelecting ? (
-                <>Click Map Location...</>
-            ) : (
-                <>Generate Areas</>
-            )}
-          </button>
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-400 mb-2">Transport Mode</label>
+        <div className="grid grid-cols-3 gap-2">
+          {transportModes.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => setTransportMode(mode.id)}
+              className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${
+                currentTransportMode === mode.id
+                  ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20'
+                  : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-gray-200 hover:border-gray-600'
+              }`}
+            >
+              {mode.icon}
+              <span className="text-xs mt-1 font-medium">{mode.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Layers List */}
-      <div>
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center justify-between">
-            <span>Layers ({layers.length})</span>
-            {layers.length > 0 && (
-                 <button onClick={handleExport} className="text-blue-400 hover:text-blue-300" title="Export GeoJSON">
-                     <Download size={14} />
-                 </button>
-            )}
-        </h2>
+      <div className="mb-6">
+        <label className="flex justify-between text-xs text-gray-400 mb-2">
+            <span>Travel Time</span>
+            <span className="text-white font-mono">{currentTravelTime} min</span>
+        </label>
+        <input
+          type="range"
+          min="5"
+          max="60"
+          step="5"
+          value={currentTravelTime}
+          onChange={(e) => setTravelTime(Number(e.target.value))}
+          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+        />
+        <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+            <span>5m</span>
+            <span>30m</span>
+            <span>60m</span>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <button
+          onClick={() => isSelecting ? stopSelection() : startSelection()}
+          className={`w-full py-3 px-4 rounded-lg font-medium transition-all shadow-sm flex items-center justify-center gap-2 ${
+            isSelecting
+              ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
+              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200/50'
+          }`}
+        >
+          {isSelecting ? 'Cancel Selection' : 'Add New Isochrone'}
+        </button>
+        {isSelecting && (
+          <p className="text-xs text-center text-gray-500 mt-2 animate-pulse">
+            Click anywhere on the map to generate an isochrone
+          </p>
+        )}
+      </div>
+
+       {/* Meeting Point Tool - Integrated into flow */}
+      {intersectionLayer && (
+        <div className="bg-purple-900/30 p-3 rounded-lg border border-purple-800 mb-6 animate-fade-in relative shadow-inner shadow-purple-900/20">
+          <button 
+            onClick={clearMeetingPoint}
+            className="absolute top-2 right-2 text-purple-400 hover:text-purple-200 hover:bg-purple-800/50 p-1 rounded transition"
+            title="Clear Meeting Point"
+          >
+           <Trash2 size={14} />
+          </button>
+          <div className="flex items-center gap-2 text-purple-200 font-medium mb-1">
+            <Sparkles size={16} className="text-purple-400" />
+            <h3>Meeting Point Active</h3>
+          </div>
+          <p className="text-xs text-purple-300/80">
+            Showing common area reachable by all selected layers.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
+        <div className="flex justify-between items-center sticky top-0 bg-gray-900 pb-2 border-b border-gray-800 z-10">
+          <h3 className="text-sm font-semibold text-gray-300">Active Layers ({layers.length})</h3>
+           {layers.length > 1 && !intersectionLayer && (
+            <button
+               onClick={calculateMeetingPoint}
+               className="text-xs flex items-center gap-1 text-purple-400 hover:text-purple-300 bg-purple-900/40 px-2 py-1 rounded-md transition border border-purple-700/50 hover:border-purple-500"
+               title="Find Common Ground"
+             >
+               <Sparkles size={12} />
+               Find Meeting Point
+             </button>
+          )}
+        </div>
         
         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
           {layers.length === 0 && (
@@ -180,6 +206,26 @@ const IsochroneControl: React.FC = () => {
            </button>
         </div>
       )}
+      <div className="flex gap-2 mb-4">
+        {layers.length > 0 && (
+          <button
+            onClick={handleExport}
+            className="flex-1 flex items-center justify-center gap-2 p-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg text-sm hover:bg-gray-700 hover:text-white transition"
+          >
+            <Download size={14} />
+            Export Isochrones
+          </button>
+        )}
+        {poisInIsochrones.length > 0 && (
+           <button
+             onClick={handleExportPois}
+             className="flex-1 flex items-center justify-center gap-2 p-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg text-sm hover:bg-gray-700 hover:text-white transition"
+           >
+             <Download size={14} />
+             Export POIs
+           </button>
+        )}
+      </div>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { polygonToCells } from 'h3-js';
 import { fetchMapboxIsochrone } from '../api/isochroneService';
 import * as GeoJSON from 'geojson';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import { calculateCommonGround } from '../utils/geometryUtils';
 
 export type TransportMode = 'walk' | 'bike' | 'car';
 export type Tab = 'isochrones' | 'cadastral' | 'tools';
@@ -40,6 +41,11 @@ interface AppState {
   toggleLayerVisibility: (id: string) => void;
   deleteLayer: (id: string) => void;
   loadPois: () => Promise<void>;
+
+  intersectionLayer: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon> | null;
+  calculateMeetingPoint: () => void;
+  clearMeetingPoint: () => void;
+
   togglePublicTransport: () => void;
   toggleRail: () => void; // Add toggle for rail
   toggleBus: () => void; // Add toggle for bus
@@ -107,6 +113,30 @@ const useStore = create<AppState>()(
           set({ isSelecting: false }); // Stop selection mode on error
         }
       },
+      
+      intersectionLayer: null,
+      calculateMeetingPoint: () => {
+        const { layers } = get();
+        const visibleLayers = layers.filter(l => l.isVisible);
+
+        if (visibleLayers.length < 2) {
+          alert("Need at least 2 visible layers to find a meeting point");
+          return;
+        }
+
+        const polygons = visibleLayers.map(l => l.geojson as GeoJSON.Feature<GeoJSON.Polygon>);
+        const result = calculateCommonGround(polygons);
+
+        if (!result) {
+           set({ intersectionLayer: null });
+           alert("No common meeting point found (areas do not overlap).");
+           return;
+        }
+
+        set({ intersectionLayer: result });
+      },
+      clearMeetingPoint: () => set({ intersectionLayer: null }),
+
       toggleLayerVisibility: (id) =>
         set((state) => ({
           layers: state.layers.map((layer) =>

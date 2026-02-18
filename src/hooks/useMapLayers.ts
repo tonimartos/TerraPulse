@@ -19,6 +19,7 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     showBus,
     showBikeParking,
     setSelectedPoi,
+    intersectionLayer
   } = useIsochroneStore();
 
   // Cadastral Store
@@ -41,16 +42,22 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     layers.forEach((layer) => {
       if (!layer.isVisible) return;
       
+      // If intersection is active, make original layers much fainter to highlight the meeting point
+      const isDimmed = !!intersectionLayer;
+      const fillColor = isDimmed ? [...layer.color.slice(0, 3), 30] : layer.color; 
+      const lineColor = isDimmed ? [150, 150, 150, 100] : [0, 0, 0, 255];
+      const lineWidth = isDimmed ? 1 : 2;
+
       deckLayers.push(
         new GeoJsonLayer({
           id: `${layer.id}-geojson`,
           data: layer.geojson,
           filled: true,
           stroked: true,
-          getFillColor: layer.color,
-          getLineColor: [0, 0, 0, 255],
-          lineWidthMinPixels: 2,
-          pickable: true,
+          getFillColor: fillColor,
+          getLineColor: lineColor,
+          lineWidthMinPixels: lineWidth,
+          pickable: !isDimmed,
         }),
         new H3HexagonLayer({
           id: `${layer.id}-h3`,
@@ -59,9 +66,26 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
           filled: true,
           stroked: false,
           getFillColor: [255, 255, 0, 100], // Semi-transparent yellow
+          visible: !isDimmed // Hide H3 grid when focusing on intersection
         })
       );
     });
+
+    if (intersectionLayer) {
+      deckLayers.push(
+        new GeoJsonLayer({
+          id: 'intersection-layer',
+          data: intersectionLayer,
+          filled: true,
+          stroked: true,
+          getFillColor: [168, 85, 247, 200], // Bright Purple (Tailwind purple-500), high opacity
+          getLineColor: [255, 255, 255, 255], // White border
+          getLineWidth: 40,
+          lineWidthMinPixels: 3,
+          pickable: true,
+        })
+      );
+    }
 
     // 2. POI Layers (Public Transport & Bike Parking)
     if (poiData && showPublicTransport) {
@@ -304,6 +328,7 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     showBus,
     showBikeParking,
     setSelectedPoi,
+    intersectionLayer, // Added dependency to trigger re-render when meeting point is calculated
     cadastralData,
     isCadastralVisible,
     isH3Visible,
@@ -312,8 +337,6 @@ export const useMapLayers = ({ setTooltip }: UseMapLayersProps) => {
     arbitrageData,
     isArbitrageVisible,
     setTooltip,
-    showRail, 
-    showBus,
   ]);
 
   return mapLayers;
