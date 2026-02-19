@@ -23,7 +23,19 @@ const CadastralControl = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedSection, setExpandedSection] = useState<'import' | 'grid' | 'layers' | null>('import');
 
-  const { cadastralData, setCadastralData, h3Resolution, setH3Resolution, h3Data, isH3Visible, toggleH3Visibility } = useCadastralStore();
+  const { 
+    cadastralData, 
+    // setCadastralData, remove unused
+    h3Resolution, 
+    setH3Resolution, 
+    h3Data, 
+    isH3Visible, 
+    toggleH3Visibility,
+    layers,
+    addLayer,
+    removeLayer,
+    toggleLayerVisibility
+  } = useCadastralStore();
   const { aggregateH3 } = useCadastralTools();
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,7 +95,16 @@ const CadastralControl = () => {
         
         if (data.length > 0) {
           console.log('Sample entry:', data[0]);
-          setCadastralData(data);
+          // OLD: setCadastralData(data);
+          
+          // NEW: Add as a distinct layer
+          addLayer({
+            id: `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name,
+            data: data,
+            isVisible: true
+          });
+          
         } else {
           console.warn('No data found in this file.');
         }
@@ -248,8 +269,35 @@ const CadastralControl = () => {
         </button>
         
         {expandedSection === 'layers' && (
-             <div className="p-4 text-xs text-gray-500 text-center animate-in fade-in slide-in-from-top-2 duration-200">
-               Manage visibility of imported datasets here. <br/> (Coming soon)
+             <div className="p-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+               {layers.length === 0 ? (
+                 <div className="text-xs text-gray-500 text-center">No layers imported yet.</div>
+               ) : (
+                 layers.map(layer => (
+                   <div key={layer.id} className="flex items-center justify-between bg-gray-900/50 p-2 rounded border border-gray-700">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <input 
+                          type="checkbox" 
+                          checked={layer.isVisible}
+                          onChange={() => toggleLayerVisibility(layer.id)}
+                          className="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500/20"
+                        />
+                        <span className="text-xs text-gray-300 truncate max-w-[150px]" title={layer.name}>
+                          {layer.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                        <span>{layer.data.length.toLocaleString()} items</span>
+                        <button 
+                          onClick={() => removeLayer(layer.id)}
+                          className="text-gray-500 hover:text-red-400 p-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                   </div>
+                 ))
+               )}
              </div>
         )}
        </div>

@@ -10,9 +10,25 @@ export interface H3PriceData {
 }
 
 
+export interface CadastralLayer {
+  id: string;
+  name: string;
+  data: CadastralData[];
+  isVisible: boolean;
+  color?: [number, number, number];
+}
+
 interface CadastralState {
+  // Legacy single-source support (to be deprecated or mapped to active layer)
   cadastralData: CadastralData[];
   setCadastralData: (data: CadastralData[]) => void;
+  
+  // New Multi-layer support
+  layers: CadastralLayer[];
+  addLayer: (layer: CadastralLayer) => void;
+  removeLayer: (id: string) => void;
+  toggleLayerVisibility: (id: string) => void;
+  
   isVisible: boolean;
   toggleVisibility: () => void;
   
@@ -36,6 +52,34 @@ interface CadastralState {
 const useCadastralStore = create<CadastralState>((set) => ({
   cadastralData: [],
   setCadastralData: (data) => set({ cadastralData: data }),
+  
+  layers: [],
+  addLayer: (layer) => set((state) => ({ 
+    layers: [...state.layers, layer],
+    // update legacy property for compatibility
+    cadastralData: [...state.cadastralData, ...layer.data] 
+  })),
+  removeLayer: (id) => set((state) => {
+    const newLayers = state.layers.filter(l => l.id !== id);
+    // Rebuild combined data
+    const combinedData = newLayers.flatMap(l => l.isVisible ? l.data : []);
+    return { 
+      layers: newLayers,
+      cadastralData: combinedData
+    };
+  }),
+  toggleLayerVisibility: (id) => set((state) => {
+    const newLayers = state.layers.map(l => 
+      l.id === id ? { ...l, isVisible: !l.isVisible } : l
+    );
+    // Rebuild combined data based on visibility
+    const combinedData = newLayers.flatMap(l => l.isVisible ? l.data : []);
+    return {
+      layers: newLayers,
+      cadastralData: combinedData
+    };
+  }),
+
   isVisible: true,
   toggleVisibility: () => set((state) => ({ isVisible: !state.isVisible })),
   
