@@ -9,6 +9,7 @@ import { point } from '@turf/helpers';
 export const useCadastralTools = () => {
   const { 
     cadastralData, 
+    layers: cadastralLayers, // Support for multi-layer cadastral data
     h3Resolution, 
     setH3Data, 
     h3Data,
@@ -266,11 +267,51 @@ export const useCadastralTools = () => {
     runAnalysis(h3Data, analysisIsochrones);
   }, [h3Data, isochroneLayers, runAnalysis]);
 
+  const analyzeIsochroneIntersection = useCallback(() => {
+    // Collect all visible isochrones
+    const visibleIsochrones = isochroneLayers.filter(l => l.isVisible);
+    if (visibleIsochrones.length === 0) return [];
+    
+    // Collect all visible cadastral data
+    // Prefer layers if available, fallback to legacy data.
+    const activeCadastralData = cadastralLayers && cadastralLayers.length > 0
+        ? cadastralLayers.filter(l => l.isVisible).flatMap(l => l.data)
+        : cadastralData;
+    
+    const features: any[] = visibleIsochrones.map(l => ({
+        ...l.geojson,
+        properties: { ...l.geojson.properties, type: 'isochrone_zone', source: l.id }
+    }));
+    
+    // Perform intersection
+    if (activeCadastralData.length > 0) {
+        visibleIsochrones.forEach(isoLayer => {
+            // @ts-ignore
+            const polygon = isoLayer.geojson;
+            activeCadastralData.forEach(item => {
+                if (!item.latitude || !item.longitude) return;
+                const pt = point([item.longitude, item.latitude]);
+                // @ts-ignore
+                if (booleanPointInPolygon(pt, polygon)) {
+                    features.push({
+                        type: 'Feature',
+                        geometry: pt.geometry,
+                        properties: { ...item, type: 'cadastral_listing', source_isochrone: isoLayer.id }
+                    });
+                }
+            });
+        });
+    }
+    
+    return features;
+  }, [isochroneLayers, cadastralData]);
+
   return {
     aggregateH3,
     computeArbitrage,
     executeAnalysis,
     generateReport,
-    isAnalyzing
+    isAnalyzing,
+    analyzeIsochroneIntersection
   };
 };

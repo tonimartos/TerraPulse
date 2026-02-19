@@ -1,5 +1,6 @@
 import React from 'react';
 import useStore, { TransportMode } from '../store/isochroneStore';
+import useCadastralStore from '../store/cadastralStore';
  import { Download, Bike, Car, Footprints, Trash2, Sparkles } from 'lucide-react';
 import { downloadGeoJSON } from '../utils/exportUtils';
 
@@ -35,29 +36,59 @@ const IsochroneControl: React.FC = () => {
     }
 
     const features: any[] = visibleLayers.map((layer) => {
+      // 1. Export the Polygon itself
       return {
         ...layer.geojson,
         properties: {
           ...layer.geojson.properties,
           id: layer.id,
           label: layer.label,
+          type: 'isochrone_polygon',
           transportMode: layer.transportMode,
           travelTime: layer.travelTime,
         },
       };
     });
-
-    downloadGeoJSON(features, 'isochrones.geojson');
-  };
-  
-  const handleExportPois = () => {
-    if (poisInIsochrones.length === 0) {
-      alert('No POIs are contained in the selected isochrones.');
-      return;
+    
+    // Let's add contained POIs if they exist
+    if (poisInIsochrones.length > 0) {
+       features.push(...poisInIsochrones.map(p => ({
+         ...p,
+         properties: {
+           ...p.properties,
+           type: 'contained_poi',
+           source_isochrone: 'all_visible'
+         }
+       })));
     }
 
-    // @ts-ignore
-    downloadGeoJSON(poisInIsochrones, 'contained-pois.geojson');
+    downloadGeoJSON(features, 'isochrone_analysis.geojson');
+  };
+  
+  const handleExportIntersection = () => {
+    if (!intersectionLayer) {
+      alert("No intersection calculated.");
+      return;
+    }
+    
+    // Explicitly define as an array of any to allow mixed GeoJSON types
+    const features: any[] = [
+       {
+         ...intersectionLayer,
+         properties: {
+             // @ts-ignore
+             ...intersectionLayer.properties,
+            type: 'intersection_area',
+            label: 'Common Ground'
+         }
+       }
+    ];
+    
+    // If we had logic to filter POIs specifically by intersection, we would add them here.
+    // Currently poisInIsochrones is union-based.
+    // But conceptually, if intersection is active, we should export what's inside IT.
+
+    downloadGeoJSON(features, 'intersection_zone.geojson');
   };
 
 
@@ -199,31 +230,35 @@ const IsochroneControl: React.FC = () => {
       {poisInIsochrones.length > 0 && (
         <div className="pt-4 border-t border-gray-700">
            <button 
-              onClick={handleExportPois}
+              onClick={handleExport}
               className="w-full py-2 px-3 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-300 flex items-center justify-center gap-2"
            >
                <Download size={12} /> Export {poisInIsochrones.length} POIs
            </button>
         </div>
       )}
-      <div className="flex gap-2 mb-4">
-        {layers.length > 0 && (
-          <button
-            onClick={handleExport}
-            className="flex-1 flex items-center justify-center gap-2 p-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg text-sm hover:bg-gray-700 hover:text-white transition"
-          >
-            <Download size={14} />
-            Export Isochrones
-          </button>
-        )}
-        {poisInIsochrones.length > 0 && (
-           <button
-             onClick={handleExportPois}
-             className="flex-1 flex items-center justify-center gap-2 p-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg text-sm hover:bg-gray-700 hover:text-white transition"
-           >
-             <Download size={14} />
-             Export POIs
-           </button>
+      <div className="flex flex-col gap-2 mb-4">
+        <button
+          onClick={handleExport}
+          disabled={layers.length === 0}
+          className={`flex items-center justify-center gap-2 p-2 rounded-lg text-sm transition ${
+            layers.length > 0
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow'
+              : 'bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <Download size={14} />
+          Export Isochrones (+ Data)
+        </button>
+        
+        {intersectionLayer && (
+            <button
+                onClick={handleExportIntersection}
+                className="flex items-center justify-center gap-2 p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm shadow transition"
+            >
+                <Download size={14} />
+                Export Intersection Zone
+            </button>
         )}
       </div>
     </div>

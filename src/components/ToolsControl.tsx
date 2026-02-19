@@ -3,7 +3,9 @@ import useCadastralStore from '../store/cadastralStore';
 import useIsochroneStore from '../store/isochroneStore';
 import useAnalysisStore from '../store/analysisStore';
 import { useCadastralTools } from '../hooks/useCadastralTools';
-import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Coins, FileBarChart, Target } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Coins, FileBarChart, Target, Download } from 'lucide-react';
+import { downloadGeoJSON } from '../utils/exportUtils';
+import { point } from '@turf/helpers';
 
 const ToolsControl = () => {
   const { 
@@ -24,8 +26,8 @@ const ToolsControl = () => {
     reportData
   } = useAnalysisStore();
 
-  const { executeAnalysis, computeArbitrage, generateReport, isAnalyzing } = useCadastralTools();
-  const [expandedSection, setExpandedSection] = useState<'arbitrage' | 'report' | 'sweetSpot' | null>('sweetSpot');
+  const { executeAnalysis, computeArbitrage, generateReport, isAnalyzing, analyzeIsochroneIntersection } = useCadastralTools();
+  const [expandedSection, setExpandedSection] = useState<'arbitrage' | 'report' | 'sweetSpot' | 'export' | null>('sweetSpot');
 
   const handleRunAnalysis = () => {
     executeAnalysis();
@@ -39,8 +41,33 @@ const ToolsControl = () => {
     generateReport();
   };
   
-  const toggleSection = (section: 'arbitrage' | 'report' | 'sweetSpot') => {
+  const toggleSection = (section: 'arbitrage' | 'report' | 'sweetSpot' | 'export') => {
       setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const handleExportAnalysis = () => {
+    // @ts-ignore
+    const features = analyzeIsochroneIntersection();
+    if (features && features.length > 0) {
+      downloadGeoJSON(features, 'isochrone_market_analysis.geojson');
+    } else {
+      alert("No visible isochrones intersecting with active cadastral data, or no data loaded.");
+    }
+  };
+
+  const handleExportDeals = () => {
+    if (arbitrageData.length === 0) return;
+    
+    // Convert to GeoJSON Features
+    const features = arbitrageData.map(d => {
+       if (d.longitude && d.latitude) {
+          return point([d.longitude, d.latitude], { ...d });
+       }
+       return null;
+    }).filter(Boolean);
+    
+    // @ts-ignore
+    downloadGeoJSON(features, 'deal_finder_results.geojson');
   };
 
   const hasGrid = h3Data.length > 0;
@@ -123,8 +150,16 @@ const ToolsControl = () => {
             </button>
 
             {arbitrageData.length > 0 && (
-              <div className="text-center text-xs text-green-400 bg-green-900/20 p-2 rounded">
-                 Found {arbitrageData.length} potential deals!
+              <div className="space-y-2">
+                <div className="text-center text-xs text-green-400 bg-green-900/20 p-2 rounded">
+                  Found {arbitrageData.length} potential deals!
+                </div>
+                <button
+                  onClick={handleExportDeals}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-300 transition"
+                >
+                  <Download size={14} /> Export Results (GeoJSON)
+                </button>
               </div>
             )}
           </div>
@@ -254,6 +289,40 @@ const ToolsControl = () => {
                    Requires both Price Grid and Isochrones.
                 </div>
              )}
+          </div>
+        )}
+      </div>
+
+      {/* Export & Data */}
+      <div key="export-data" className="border border-gray-700 rounded-lg overflow-hidden bg-gray-800">
+        <button
+          onClick={() => toggleSection('export')}
+          className="w-full flex items-center justify-between p-3 bg-gray-800 hover:bg-gray-700 transition"
+        >
+           <div className="flex items-center gap-2">
+             <Download size={16} className="text-green-400" />
+             <span className="font-semibold text-gray-200 text-sm">Export Data</span>
+           </div>
+           {expandedSection === 'export' ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </button>
+
+        {expandedSection === 'export' && (
+          <div className="p-3 border-t border-gray-700 space-y-3 bg-gray-900/50">
+             <p className="text-xs text-gray-400">
+               Download comprehensive datasets including isochrones, intersection zones, and property listings contained within them.
+             </p>
+             
+             <button
+               onClick={handleExportAnalysis}
+               className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded text-xs font-semibold"
+             >
+               <Download size={14} />
+               Export Isochrones & Listings
+             </button>
+             
+             <div className="text-[10px] text-gray-500 italic border-t border-gray-800 pt-2 mt-2">
+               Includes all visible layers and intersecting data points.
+             </div>
           </div>
         )}
       </div>
