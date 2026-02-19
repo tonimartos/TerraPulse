@@ -3,6 +3,8 @@ import { latLngToCell, polygonToCells } from 'h3-js';
 import useCadastralStore, { H3PriceData } from '../store/cadastralStore';
 import useAnalysisStore, { CorrelationData } from '../store/analysisStore';
 import useIsochroneStore from '../store/isochroneStore';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import { point } from '@turf/helpers';
 
 export const useCadastralTools = () => {
   const { 
@@ -11,7 +13,8 @@ export const useCadastralTools = () => {
     setH3Data, 
     h3Data,
     arbitrageThreshold,
-    setArbitrageData
+    setArbitrageData,
+    scopeToIsochrones
   } = useCadastralStore();
   
   const { runAnalysis, isAnalyzing, setReportData } = useAnalysisStore();
@@ -105,6 +108,16 @@ export const useCadastralTools = () => {
         return false;
       }
       
+      // SCOPE FILTER: Check if point is inside visible isochrones
+      if (scopeToIsochrones) {
+          const visibleIsochrones = isochroneLayers.filter(l => l.isVisible);
+          if (visibleIsochrones.length > 0) {
+            const pt = point([item.longitude, item.latitude]);
+            const isInside = visibleIsochrones.some(iso => booleanPointInPolygon(pt, iso.geojson));
+            if (!isInside) return false;
+          }
+      }
+      
       const itemPriceSqm = item.valeur_fonciere / item.surface_build;
       
       try {
@@ -125,7 +138,7 @@ export const useCadastralTools = () => {
     console.log(`Found ${deals.length} deals.`);
     setArbitrageData(deals);
 
-  }, [cadastralData, h3Data, h3Resolution, arbitrageThreshold, setArbitrageData]);
+  }, [cadastralData, h3Data, h3Resolution, arbitrageThreshold, setArbitrageData, scopeToIsochrones, isochroneLayers]);
 
   const generateReport = useCallback(() => {
     if (h3Data.length === 0 || isochroneLayers.length === 0) {

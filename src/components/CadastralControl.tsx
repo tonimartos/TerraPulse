@@ -215,6 +215,10 @@ const CadastralControl = () => {
 
         {expandedSection === 'grid' && (
           <div className="p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+             <p className="text-xs text-gray-400 leading-relaxed border-l-2 border-purple-500 pl-2">
+               Aggregates listings into hexagonal zones to visualize average price per m² trends. The heatmap helps identify expensive and affordable areas at a glance.
+             </p>
+
              <div className="mb-4">
                <label className="block text-xs font-medium text-gray-400 mb-1">
                  Resolution: {h3Resolution}

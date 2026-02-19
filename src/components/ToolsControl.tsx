@@ -10,7 +10,9 @@ const ToolsControl = () => {
     h3Data,
     arbitrageThreshold,
     setArbitrageThreshold,
-    arbitrageData
+    arbitrageData,
+    scopeToIsochrones,
+    setScopeToIsochrones
   } = useCadastralStore();
   
   const { layers: isochroneLayers } = useIsochroneStore();
@@ -93,6 +95,20 @@ const ToolsControl = () => {
                 className="w-full h-2 bg-gradient-to-r from-green-500 to-yellow-500 rounded-lg appearance-none cursor-pointer"
               />
             </div>
+
+            {hasIsochrones && (
+              <div className="mb-4">
+                 <label className="flex items-center space-x-2 text-xs text-gray-300">
+                    <input 
+                      type="checkbox"
+                      checked={scopeToIsochrones}
+                      onChange={(e) => setScopeToIsochrones(e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-offset-gray-900" 
+                    />
+                    <span>Search only within visible Isochrones</span>
+                 </label>
+              </div>
+            )}
 
             <button
               onClick={handleComputeArbitrage}

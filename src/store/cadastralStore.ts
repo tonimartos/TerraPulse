@@ -47,6 +47,10 @@ interface CadastralState {
   setArbitrageThreshold: (threshold: number) => void;
   isArbitrageVisible: boolean;
   toggleArbitrageVisibility: () => void;
+  
+  // Context-Aware State
+  scopeToIsochrones: boolean;
+  setScopeToIsochrones: (scope: boolean) => void;
 }
 
 const useCadastralStore = create<CadastralState>((set) => ({
@@ -96,6 +100,9 @@ const useCadastralStore = create<CadastralState>((set) => ({
   setArbitrageThreshold: (threshold) => set({ arbitrageThreshold: threshold }),
   isArbitrageVisible: true,
   toggleArbitrageVisibility: () => set((state) => ({ isArbitrageVisible: !state.isArbitrageVisible })),
+  
+  scopeToIsochrones: false,
+  setScopeToIsochrones: (scope) => set({ scopeToIsochrones: scope }),
 }));
 
 export default useCadastralStore;
